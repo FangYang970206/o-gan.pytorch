@@ -18,8 +18,7 @@ from torch.utils.data import DataLoader
 
 def main():
     parse = argparse.ArgumentParser()
-    parse.add_argument('--dataset_path', type=str, default='TL_Dataset/')
-    parse.add_argument('--resize_shape', type=tuple, default=(128, 128))
+    parse.add_argument('--dataset_path', type=str, default='F:\\img_align_celeba')
     parse.add_argument('--batch_size', type=int, default=64)
     parse.add_argument('--lr', type=float, default=1e-4)
     parse.add_argument('--num_workers', type=int, default=8)
@@ -41,18 +40,21 @@ def main():
 
     e_model = E_Model().to(device)
     g_model = G_Model().to(device)
+    init_weights(e_model)
+    init_weights(g_model)
 
     data_files = glob(join(args['dataset_path'], '*.jpg'))
-    dataset = CelebA_Dataset(data_files, args['resize_shape'])
+    dataset = CelebA_Dataset(data_files, args['img_dim'])
 
     dataload = DataLoader(dataset,
                           batch_size=args['batch_size'],
                           shuffle=True,
                           num_workers=args['num_workers'])
 
-    time_str = strftime("%Y-%m-%d %H:%M:%S", gmtime())
+    time_str = strftime("%Y-%m-%d-%H-%M-%S", gmtime())
+    # writer_path = join(args['save_path'], time_str)
     os.mkdir(join(args['save_path'], time_str))
-    writer = SummaryWriter(logdir=join(args['save_path'], time_str))
+    writer = SummaryWriter(log_dir=join(args['save_path'], time_str))
 
     # fixed_noise = np.random.randn(args['sample_n']**2, args['z_dim'])
     # fixed_noise = torch.from_numpy(fixed_noise).to(device)
@@ -65,18 +67,20 @@ def main():
         trainer = Trainer(e_model, g_model, dataload, epoch, 
                           args['lr'], device, writer)
         trainer.train()
-        if (epoch+1) % 20 == 0:
+        if (epoch+1) % 1 == 0:
             if args['save_model']:
                 e_state = e_model.state_dict()
                 torch.save(e_state, f'logs/e_state_{epoch}.pth')
                 g_state = g_model.state_dict()
                 torch.save(g_state, f'logs/g_state_{epoch}.pth')
             samples = g_model(fixed_noise.to(device)).detach().cpu().numpy()
+            # print(samples.shape)
             for i in range(args['sample_n']):
                 for j in range(args['sample_n']):
+                    # print(samples[j+i*args['sample_n']].shape)
                     figure[i * args['img_dim']:(i+1) * args['img_dim'],
-                           j * args['img_dim']:(j+1) * args['img_dim'], 3] = \
-                           samples[j+i*args['sample_n']]
+                           j * args['img_dim']:(j+1) * args['img_dim'], :] = \
+                           samples[j+i*args['sample_n']].transpose(1, 2, 0)
             figure = (figure + 1) / 2 * 255
             figure = np.round(figure, 0).astype('uint8')
             imageio.imwrite(join(args['save_path'], f'{epoch}.jpg'), figure)
