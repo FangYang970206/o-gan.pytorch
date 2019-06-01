@@ -43,16 +43,21 @@ class Trainer:
         self.z_fake_mean = torch.mean(self.z_fake, 1, keepdim=True)
 
     def backward_G(self):
-        self.t1_loss = self.z_real_mean - self.z_fake_ng_mean
-        self.z_corr = self._correlation(self.z, self.z_fake)
-        self.g_loss = torch.mean(self.t1_loss - self.z_corr)
-        self.g_loss.backward(retain_graph=True)
+        # self.t1_loss = self.z_real_mean - self.z_fake_ng_mean
+        self.t1_loss = self.z_fake_mean
+        self.z_corr_1 = self._correlation(self.z, self.z_fake)
+        self.g_loss = torch.mean(self.t1_loss - self.z_corr_1)
+        self.g_loss.backward()
 
     def backward_E(self):
-        self.t2_loss = self.z_fake_mean - self.z_fake_ng_mean
-        self.qp_loss = 0.25 * self.t1_loss[:, 0] ** 2 / \
+        self.t2_loss = self.z_real_mean - self.z_fake_ng_mean
+        # self.t2_loss = self.z_real_mean
+        self.qp_loss = 0.25 * self.t2_loss[:, 0] ** 2 / \
                        torch.mean((self.x_real - self.x_fake_ng)**2, dim=[1, 2, 3])
-        self.e_loss = torch.mean(self.t1_loss + self.t2_loss - 0.5 * self.z_corr) + \
+        # self.e_loss = torch.mean(self.t1_loss + self.t2_loss - 0.5 * self.z_corr) + \
+        #               torch.mean(self.qp_loss)
+        self.z_corr_2 = self._correlation(self.z, self.z_fake_ng)
+        self.e_loss = torch.mean(self.t2_loss - 0.5 * self.z_corr_2) + \
                       torch.mean(self.qp_loss)
         self.e_loss.backward()
 
@@ -62,16 +67,18 @@ class Trainer:
             self.z = torch.randn(x.size()[0], 128).to(self.device)
             self.x_real = x.to(self.device)
 
-            self._set_requires_grad(self.g_model, True)
-            self._set_requires_grad(self.e_model, False)
+            # self._set_requires_grad(self.g_model, True)
+            # self._set_requires_grad(self.e_model, False)
 
             self._forward()
+
+            self._set_requires_grad(self.e_model, False)
 
             self.optimizer_G.zero_grad()
             self.backward_G()
             self.optimizer_G.step()
 
-            self._set_requires_grad(self.g_model, False)
+            # self._set_requires_grad(self.g_model, False)
             self._set_requires_grad(self.e_model, True)
 
             self.optimizer_E.zero_grad()

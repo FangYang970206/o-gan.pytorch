@@ -5,14 +5,6 @@ import numpy as np
 
 
 def init_weights(net, init_type='normal', init_gain=0.02):
-    """Initialize network weights.
-    Parameters:
-        net (network)   -- network to be initialized
-        init_type (str) -- the name of an initialization method: normal | xavier | kaiming | orthogonal
-        init_gain (float)    -- scaling factor for normal, xavier and orthogonal.
-    We use 'normal' in the original pix2pix and CycleGAN paper. But xavier and kaiming might
-    work better for some applications. Feel free to try yourself.
-    """
     def init_func(m):  # define the initialization function
         classname = m.__class__.__name__
         if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
@@ -26,13 +18,6 @@ def init_weights(net, init_type='normal', init_gain=0.02):
                 init.orthogonal_(m.weight.data, gain=init_gain)
             else:
                 raise NotImplementedError('initialization method [%s] is not implemented' % init_type)
-            if hasattr(m, 'bias') and m.bias is not None:
-                init.constant_(m.bias.data, 0.0)
-        elif classname.find('BatchNorm2d') != -1:  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
-            init.normal_(m.weight.data, 1.0, init_gain)
-            init.constant_(m.bias.data, 0.0)
-
-    print('initialize network with %s' % init_type)
     net.apply(init_func)
 
 class E_Model(nn.Module):
@@ -60,7 +45,7 @@ class E_Model(nn.Module):
 
     def _convBlock(self, in_ch, out_ch):
         return nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 4, 2, 1),
+            nn.Conv2d(in_ch, out_ch, 4, 2, 1, bias=False),
             nn.BatchNorm2d(out_ch),
             nn.LeakyReLU(0.2, inplace=True)
         )
@@ -96,7 +81,7 @@ class G_Model(nn.Module):
         
     def _convTransposeBlock(self, in_ch, out_ch):
         return nn.Sequential(
-            nn.ConvTranspose2d(in_ch, out_ch, 4, 2, 1),
+            nn.ConvTranspose2d(in_ch, out_ch, 4, 2, 1, bias=False),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
