@@ -12,7 +12,7 @@ import numpy as np
 from model import *
 from tensorboardX import SummaryWriter
 from dataset import CelebA_Dataset
-from trainer import Trainer
+from trainer_ttur import Trainer
 from torch.utils.data import DataLoader
 
 
@@ -28,17 +28,17 @@ def main():
     parse.add_argument('--sample_n', type=int, default=9)
     parse.add_argument('--z_dim', type=int, default=128)
     parse.add_argument('--img_dim', type=int, default=128)
+    parse.add_argument('--UsedSelfModulatedBN', type=bool, default=False)
 
     args = vars(parse.parse_args())
 
     if not exists(args['save_path']):
         os.mkdir(args['save_path'])
     
-    # pylint: disable=E1101
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # pylint: disable=E1101
 
     e_model = E_Model().to(device)
+    # g_model = G_Model(use_sm_bn=True).to(device)
     g_model = G_Model().to(device)
     init_weights(e_model)
     init_weights(g_model)
@@ -52,12 +52,9 @@ def main():
                           num_workers=args['num_workers'])
 
     time_str = strftime("%Y-%m-%d-%H-%M-%S", gmtime())
-    # writer_path = join(args['save_path'], time_str)
     os.mkdir(join(args['save_path'], time_str))
     writer = SummaryWriter(log_dir=join(args['save_path'], time_str))
 
-    # fixed_noise = np.random.randn(args['sample_n']**2, args['z_dim'])
-    # fixed_noise = torch.from_numpy(fixed_noise).to(device)
     fixed_noise = torch.randn(args['sample_n']**2, args['z_dim'])
     figure = np.zeros((args['img_dim'] * args['sample_n'],
                        args['img_dim'] * args['sample_n'], 3))
@@ -74,10 +71,8 @@ def main():
                 g_state = g_model.state_dict()
                 torch.save(g_state, f'logs/g_state_{epoch}.pth')
             samples = g_model(fixed_noise.to(device)).detach().cpu().numpy()
-            # print(samples.shape)
             for i in range(args['sample_n']):
                 for j in range(args['sample_n']):
-                    # print(samples[j+i*args['sample_n']].shape)
                     figure[i * args['img_dim']:(i+1) * args['img_dim'],
                            j * args['img_dim']:(j+1) * args['img_dim'], :] = \
                            samples[j+i*args['sample_n']].transpose(1, 2, 0)

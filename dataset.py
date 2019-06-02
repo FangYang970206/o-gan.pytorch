@@ -7,7 +7,7 @@ import scipy.misc as misc
 
 class CelebA_Dataset(data.Dataset):
     def __init__(self, data_files, img_dim=128):
-        self.data_files = data_files
+        self.data_files = data_files[:30000]
         self.img_dim = img_dim
         
     def __getitem__(self, ind):
